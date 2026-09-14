@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RailChat — the offline train chat</title>
+<meta name="description" content="RailChat lets you message anyone on your train over Bluetooth mesh — no internet, no SIM, no account.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+
+  @font-face {
+    font-family: "Geist Mono";
+    src: url("fonts/geist-mono-regular.ttf") format("truetype");
+    font-weight: 400;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Geist Mono";
+    src: url("fonts/geist-mono-medium.ttf") format("truetype");
+    font-weight: 500;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Geist Mono";
+    src: url("fonts/geist-mono-semibold.ttf") format("truetype");
+    font-weight: 600;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Geist Mono";
+    src: url("fonts/geist-mono-bold.ttf") format("truetype");
+    font-weight: 700;
+    font-display: swap;
+  }
+
+  :root {
+    --bg: #FFFFFF;
+    --surface: #F2F4F8;
+    --surface-raised: #FFFFFF;
+    --ink: #131A1F;
+    --ink-soft: #4C5560;
+    --outline: #CBD2DE;
+    --rail-blue: #1C3F94;
+    --rail-blue-on: #FFFFFF;
+    --rail-blue-container: #D9E4FF;
+    --signal-red: #C6291A;
+    --signal-red-container: #FFDAD4;
+    --saffron: #B36B00;
+    --saffron-container: #FBEEDA;
+    --shadow: 0 1px 2px rgba(19, 26, 31, 0.06), 0 12px 32px rgba(19, 26, 31, 0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #000000;
+      --surface: #0E1420;
+      --surface-raised: #121A2B;
+      --ink: #F5F5F5;
+      --ink-soft: #9AA6B6;
+      --outline: #2A3550;
+      --rail-blue: #4C86FF;
+      --rail-blue-on: #FFFFFF;
+      --rail-blue-container: #12294F;
+      --signal-red: #FF5449;
+      --signal-red-container: #5C130D;
+      --saffron: #FFB300;
+      --saffron-container: #34260E;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.45);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #000000;
+    --surface: #0E1420;
+    --surface-raised: #121A2B;
+    --ink: #F5F5F5;
+    --ink-soft: #9AA6B6;
+    --outline: #2A3550;
+    --rail-blue: #4C86FF;
+    --rail-blue-on: #FFFFFF;
+    --rail-blue-container: #12294F;
+    --signal-red: #FF5449;
+    --signal-red-container: #5C130D;
+    --saffron: #FFB300;
+    --saffron-container: #34260E;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.45);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+  .col  { max-width: 620px; }
+
+  a { color: inherit; }
+
+  h1, h2, h3 { text-wrap: balance; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
+
+  /* ---------------- header ---------------- */
+  header.site {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    backdrop-filter: blur(10px);
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    border-bottom: 1px solid var(--outline);
+  }
+  header.site .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; }
+  .brand .mark { width: 30px; height: 30px; border-radius: 8px; background: var(--rail-blue); display: flex; align-items: center; justify-content: center; flex: none; }
+  .brand .mark svg { width: 19px; height: 19px; }
+
+  nav.links { display: flex; align-items: center; gap: 22px; font-size: 13.5px; }
+  nav.links a { text-decoration: none; color: var(--ink-soft); }
+  nav.links a:hover { color: var(--ink); }
+  nav.links a.button {
+    color: var(--rail-blue-on);
+    background: var(--rail-blue);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-weight: 600;
+  }
+
+  #theme-toggle {
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: 7px;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+  #theme-toggle:hover { color: var(--ink); }
+  #theme-toggle:focus-visible, a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--rail-blue);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 640px) {
+    nav.links span.hide-sm { display: none; }
+  }
+
+  /* ---------------- hero ---------------- */
+  .hero {
+    padding: 72px 0 88px;
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 48px;
+    align-items: center;
+  }
+  @media (max-width: 860px) {
+    .hero { grid-template-columns: 1fr; padding: 48px 0 56px; }
+  }
+
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--rail-blue);
+    margin: 0 0 18px;
+  }
+
+  h1.headline { font-size: clamp(34px, 5vw, 52px); line-height: 1.08; }
+  h1.headline .accent { color: var(--rail-blue); }
+
+  p.subhead { color: var(--ink-soft); font-size: 17px; max-width: 46ch; margin: 22px 0 30px; }
+
+  .cta-row { display: flex; flex-wrap: wrap; gap: 12px; }
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 13px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14.5px;
+    text-decoration: none;
+    border: 1px solid transparent;
+  }
+  .cta.primary { background: var(--rail-blue); color: var(--rail-blue-on); }
+  .cta.primary:hover { opacity: 0.92; }
+  .cta.ghost { background: transparent; color: var(--ink); border-color: var(--outline); }
+  .cta.ghost:hover { border-color: var(--ink-soft); }
+
+  /* ---------------- phone mockup ---------------- */
+  .phone {
+    justify-self: center;
+    width: 280px;
+    border-radius: 30px;
+    padding: 10px;
+    background: var(--surface-raised);
+    border: 1px solid var(--outline);
+    box-shadow: var(--shadow);
+  }
+  .phone .screen {
+    background: var(--bg);
+    border-radius: 22px;
+    padding: 16px 14px 14px;
+    min-height: 360px;
+    display: flex;
+    flex-direction: column;
+  }
+  .phone .screen-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--ink-soft);
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--outline);
+  }
+  .phone .screen-header .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--signal-red); }
+  .phone .screen-header b { color: var(--ink); font-weight: 600; }
+
+  .bubble-row { display: flex; margin-bottom: 10px; }
+  .bubble-row.self { justify-content: flex-end; }
+  .bubble {
+    max-width: 82%;
+    padding: 9px 12px;
+    border-radius: 18px 18px 18px 6px;
+    font-size: 12.5px;
+    line-height: 1.45;
+    opacity: 0;
+    transform: translateY(6px);
+    animation: rise 0.5s ease forwards;
+  }
+  .bubble-row.self .bubble { border-radius: 18px 18px 6px 18px; }
+  .bubble.received {
+    background: color-mix(in srgb, var(--rail-blue) 20%, var(--surface-raised));
+    border: 1px solid color-mix(in srgb, var(--rail-blue) 45%, transparent);
+    color: var(--ink);
+  }
+  .bubble.self {
+    background: color-mix(in srgb, var(--saffron) 26%, var(--surface-raised));
+    border: 1px solid color-mix(in srgb, var(--saffron) 55%, transparent);
+    color: var(--ink);
+  }
+  .bubble .who { display: block; font-size: 10px; font-weight: 600; color: var(--rail-blue); margin-bottom: 3px; }
+
+  .bubble:nth-child(1) { animation-delay: 0.15s; }
+  .typing {
+    display: inline-flex;
+    gap: 3px;
+    padding: 10px 12px;
+    border-radius: 18px 18px 18px 6px;
+    background: color-mix(in srgb, var(--rail-blue) 20%, var(--surface-raised));
+    border: 1px solid color-mix(in srgb, var(--rail-blue) 45%, transparent);
+    width: fit-content;
+    opacity: 0;
+    animation: rise 0.4s ease forwards;
+    animation-delay: 2.1s;
+  }
+  .typing span { width: 5px; height: 5px; border-radius: 50%; background: var(--ink-soft); animation: bounce 1.1s infinite ease-in-out; }
+  .typing span:nth-child(2) { animation-delay: 0.15s; }
+  .typing span:nth-child(3) { animation-delay: 0.3s; }
+
+  .phone .composer {
+    margin-top: auto;
+    padding-top: 12px;
+    font-size: 11px;
+    color: var(--ink-soft);
+    border-top: 1px solid var(--outline);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @keyframes rise { to { opacity: 1; transform: translateY(0); } }
+  @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-3px); opacity: 1; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bubble, .typing { animation: none !important; opacity: 1 !important; transform: none !important; }
+    .typing span { animation: none !important; }
+  }
+
+  /* ---------------- sections ---------------- */
+  section { padding: 64px 0; border-top: 1px solid var(--outline); }
+
+  .section-head { margin-bottom: 36px; }
+  .section-head .eyebrow { margin-bottom: 10px; }
+  .section-head h2 { font-size: clamp(24px, 3vw, 32px); }
+  .section-head p { color: var(--ink-soft); margin-top: 12px; max-width: 56ch; }
+
+  /* route diagram */
+  .route {
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: 16px;
+    padding: 32px 24px 24px;
+  }
+  .route svg { width: 100%; height: auto; display: block; }
+  .hop-pulse { animation: pulse 2.4s ease-in-out infinite; }
+  .hop-pulse:nth-child(2) { animation-delay: 0.4s; }
+  .hop-pulse:nth-child(3) { animation-delay: 0.8s; }
+  @keyframes pulse { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .hop-pulse { animation: none; opacity: 0.6; } }
+
+  /* nested rooms diagram */
+  .rooms-diagram {
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: 16px;
+    padding: 28px;
+  }
+  .train-box {
+    border: 2px dashed color-mix(in srgb, var(--rail-blue) 55%, transparent);
+    border-radius: 14px;
+    padding: 28px 20px 20px;
+    position: relative;
+  }
+  .train-box .tag {
+    position: absolute;
+    top: -12px;
+    left: 20px;
+    background: var(--rail-blue);
+    color: var(--rail-blue-on);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+  .coach-box {
+    border: 2px solid color-mix(in srgb, var(--signal-red) 55%, transparent);
+    border-radius: 12px;
+    padding: 22px 18px 16px;
+    max-width: 260px;
+    position: relative;
+    background: var(--surface-raised);
+  }
+  .coach-box .tag {
+    position: absolute;
+    top: -12px;
+    left: 16px;
+    background: var(--signal-red);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+  .rooms-diagram .room-name { font-size: 13px; color: var(--ink-soft); }
+  .rooms-diagram .room-name b { color: var(--ink); }
+
+  /* feature grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  @media (max-width: 780px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: 14px;
+    padding: 18px;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+  }
+  .card:hover { transform: translateY(-2px); border-color: var(--rail-blue); }
+  .card .tag {
+    display: inline-block;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+  }
+  .card .tag.core { background: var(--rail-blue-container); color: var(--rail-blue); }
+  .card .tag.new  { background: var(--signal-red-container); color: var(--signal-red); }
+  .card h3 { font-size: 15px; margin-bottom: 6px; }
+  .card p { font-size: 13.5px; color: var(--ink-soft); margin: 0; }
+
+  /* commands */
+  .cmd-wrap { overflow-x: auto; border: 1px solid var(--outline); border-radius: 14px; }
+  table.cmd { width: 100%; border-collapse: collapse; font-size: 13.5px; background: var(--surface-raised); }
+  table.cmd th, table.cmd td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--outline); }
+  table.cmd tr:last-child td { border-bottom: none; }
+  table.cmd th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-soft); }
+  table.cmd td.cmd-name { color: var(--rail-blue); font-weight: 600; white-space: nowrap; }
+  table.cmd td { color: var(--ink-soft); }
+
+  /* download */
+  .download-panel {
+    background: linear-gradient(135deg, var(--rail-blue-container), var(--surface));
+    border: 1px solid var(--outline);
+    border-radius: 18px;
+    padding: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .download-panel h2 { font-size: 24px; margin-bottom: 8px; }
+  .download-panel p { color: var(--ink-soft); margin: 0; max-width: 42ch; }
+
+  .fork-note {
+    margin-top: 24px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    display: flex;
+    gap: 8px;
+  }
+  .fork-note b { color: var(--ink); }
+
+  footer {
+    padding: 32px 0 56px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    border-top: 1px solid var(--outline);
+  }
+  footer a { text-decoration: underline; text-underline-offset: 2px; }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap bar">
+    <div class="brand">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 108 108" fill="none">
+          <path fill="#FFFFFF" fill-rule="evenodd" clip-rule="evenodd" d="
+            M28,34 H80 A3,3 0 0 1 83,37 A3,3 0 0 1 80,40 H28 A3,3 0 0 1 25,37 A3,3 0 0 1 28,34 Z
+            M29,40 H79 A8,8 0 0 1 87,48 V68 A8,8 0 0 1 79,76 H29 A8,8 0 0 1 21,68 V48 A8,8 0 0 1 29,40 Z
+            M32,47 H38 A2,2 0 0 1 40,49 V57 A2,2 0 0 1 38,59 H32 A2,2 0 0 1 30,57 V49 A2,2 0 0 1 32,47 Z
+            M51,47 H57 A2,2 0 0 1 59,49 V57 A2,2 0 0 1 57,59 H51 A2,2 0 0 1 49,57 V49 A2,2 0 0 1 51,47 Z
+            M70,47 H76 A2,2 0 0 1 78,49 V57 A2,2 0 0 1 76,59 H70 A2,2 0 0 1 68,57 V49 A2,2 0 0 1 70,47 Z"/>
+          <path fill="#FFFFFF" d="M32,80 A6,6 0 1,0 44,80 A6,6 0 1,0 32,80 Z M64,80 A6,6 0 1,0 76,80 A6,6 0 1,0 64,80 Z"/>
+        </svg>
+      </span>
+      RailChat
+    </div>
+    <nav class="links">
+      <a href="#how" class="hide-sm">How it works</a>
+      <a href="#features" class="hide-sm">Features</a>
+      <a href="https://github.com/soolame/railchat-android">Source</a>
+      <a class="button" href="https://github.com/soolame/railchat-android/releases/tag/latest-debug">Download</a>
+      <button id="theme-toggle" type="button" aria-label="Toggle dark mode">DARK</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero" style="border-top:none;">
+    <div class="col">
+      <p class="eyebrow">Offline mesh chat for train passengers</p>
+      <h1 class="headline">Every phone on the<br><span class="accent">train</span> is a relay.</h1>
+      <p class="subhead">RailChat lets you message anyone nearby over Bluetooth — no internet, no SIM, no account. Your message hops phone to phone until it reaches who you're talking to, even three coaches down.</p>
+      <div class="cta-row">
+        <a class="cta primary" href="https://github.com/soolame/railchat-android/releases/tag/latest-debug">Download for Android</a>
+        <a class="cta ghost" href="https://github.com/soolame/railchat-android">View source</a>
+      </div>
+    </div>
+
+    <div class="phone" aria-hidden="true">
+      <div class="screen">
+        <div class="screen-header"><span class="dot"></span> <b>t/12951/S7</b> · coach room</div>
+        <div class="bubble-row">
+          <div class="bubble received"><span class="who">anon7577</span>anyone in S7 awake? chai stall in 20 min</div>
+        </div>
+        <div class="bubble-row self">
+          <div class="bubble self">save me a window seat, coming</div>
+        </div>
+        <div class="bubble-row">
+          <div class="bubble received"><span class="who">anon4210</span>bhai bring extra cup</div>
+        </div>
+        <div class="typing"><span></span><span></span><span></span></div>
+        <div class="composer"><span>0 bars · offline</span><span>3 nearby</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="section-head">
+      <p class="eyebrow">How it works</p>
+      <h2>No towers. Just the phones already next to you.</h2>
+      <p>Two nearby phones can already talk over Bluetooth, no data plan needed. RailChat's trick is that a message doesn't stop there — every phone running it between you and your friend quietly relays it onward, one hop at a time.</p>
+    </div>
+    <div class="route" role="img" aria-label="Diagram of a message hopping across three coaches to reach a friend">
+      <svg viewBox="0 0 700 130" preserveAspectRatio="xMidYMid meet">
+        <line x1="60" y1="60" x2="640" y2="60" stroke="var(--outline)" stroke-width="2"/>
+        <circle class="hop-pulse" cx="146" cy="60" r="4" fill="var(--rail-blue)"/>
+        <circle class="hop-pulse" cx="320" cy="60" r="4" fill="var(--rail-blue)"/>
+        <circle class="hop-pulse" cx="493" cy="60" r="4" fill="var(--rail-blue)"/>
+        <circle cx="60" cy="60" r="10" fill="var(--rail-blue)"/>
+        <circle cx="233" cy="60" r="8" fill="var(--surface-raised)" stroke="var(--outline)" stroke-width="2"/>
+        <circle cx="406" cy="60" r="8" fill="var(--surface-raised)" stroke="var(--outline)" stroke-width="2"/>
+        <circle cx="580" cy="60" r="10" fill="var(--signal-red)"/>
+        <g font-size="12" fill="var(--ink-soft)">
+          <text x="60" y="94" text-anchor="middle">You</text>
+          <text x="233" y="94" text-anchor="middle">Coach B</text>
+          <text x="406" y="94" text-anchor="middle">Coach C</text>
+          <text x="580" y="94" text-anchor="middle">Friend</text>
+        </g>
+        <g font-size="11" fill="var(--ink-soft)">
+          <text x="146" y="42" text-anchor="middle">hop 1</text>
+          <text x="320" y="42" text-anchor="middle">hop 2</text>
+          <text x="493" y="42" text-anchor="middle">hop 3</text>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">Two ways in</p>
+      <h2>Your whole train, or just your coach.</h2>
+      <p>Tell RailChat your train number and coach once — it's optional and never leaves your phone — and two rooms appear automatically, nested exactly like the train itself.</p>
+    </div>
+    <div class="rooms-diagram">
+      <div class="train-box">
+        <span class="tag">TRAIN 12951</span>
+        <p class="room-name" style="margin-top:6px;">room: <b>t/12951</b> — everyone on the train</p>
+        <div class="coach-box" style="margin-top:18px;">
+          <span class="tag">COACH S7</span>
+          <p class="room-name" style="margin-top:4px;">room: <b>t/12951/S7</b> — just your coach</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="section-head">
+      <p class="eyebrow">Everything it does</p>
+      <h2>Built on bitchat's mesh, extended for trains.</h2>
+      <p>RailChat forks <a href="https://github.com/permissionlesstech/bitchat-android">bitchat-android</a> — the mesh, encryption, and channel system below are bitchat's, unmodified.</p>
+    </div>
+    <div class="grid">
+      <div class="card"><span class="tag new">RailChat</span><h3>Train &amp; coach rooms</h3><p>Auto-generated from your train number, no setup required from anyone else.</p></div>
+      <div class="card"><span class="tag core">Core</span><h3>Multi-hop mesh</h3><p>Up to 7 hops of relay over Bluetooth LE, no internet involved.</p></div>
+      <div class="card"><span class="tag core">Core</span><h3>End-to-end encryption</h3><p>Noise Protocol private messages — X25519 + ChaCha20-Poly1305.</p></div>
+      <div class="card"><span class="tag core">Core</span><h3>Group channels</h3><p>Create a named, optionally password-locked group with <span class="cmd-name">/join</span>.</p></div>
+      <div class="card"><span class="tag core">Core</span><h3>Photos &amp; voice notes</h3><p>Not just text — share images and short voice messages too.</p></div>
+      <div class="card"><span class="tag core">Core</span><h3>Panic wipe</h3><p>Triple-tap to instantly erase everything RailChat has stored.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">Commands</p>
+      <h2>A few things worth knowing</h2>
+    </div>
+    <div class="cmd-wrap">
+      <table class="cmd">
+        <thead><tr><th>Type this</th><th>What happens</th></tr></thead>
+        <tbody>
+          <tr><td class="cmd-name">/join groupname</td><td>Create or join a named group. Add a password after the name to lock it.</td></tr>
+          <tr><td class="cmd-name">/msg nickname hello</td><td>Send a private, encrypted message to one person.</td></tr>
+          <tr><td class="cmd-name">/w</td><td>List everyone currently nearby and online.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="download-panel">
+      <div>
+        <h2>Try it on your next journey.</h2>
+        <p>Debug build, rebuilt automatically on every push — not on an app store, sideload it directly.</p>
+      </div>
+      <a class="cta primary" href="https://github.com/soolame/railchat-android/releases/tag/latest-debug">Download the APK</a>
+    </div>
+    <div class="fork-note">
+      <span>—</span>
+      <span>RailChat is a fork of <b>bitchat</b> — the mesh and encryption underneath are unmodified from <a href="https://github.com/permissionlesstech/bitchat-android">permissionlesstech/bitchat-android</a>. Source for this fork: <a href="https://github.com/soolame/railchat-android">soolame/railchat-android</a>.</span>
+    </div>
+  </section>
+
+</main>
+
+<footer class="wrap">
+  <span>RailChat — built for passengers, not servers.</span>
+  <span><a href="https://github.com/soolame/railchat-android/blob/main/LICENSE.md">GPL-3.0</a> · Geist Mono under <a href="fonts/OFL.txt">OFL</a></span>
+</footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var btn = document.getElementById('theme-toggle');
+    var stored = localStorage.getItem('railchat-theme');
+    function apply(theme) {
+      if (theme === 'light' || theme === 'dark') {
+        root.setAttribute('data-theme', theme);
+        btn.textContent = theme === 'dark' ? 'LIGHT' : 'DARK';
+      } else {
+        root.removeAttribute('data-theme');
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        btn.textContent = prefersDark ? 'LIGHT' : 'DARK';
+      }
+    }
+    apply(stored);
+    btn.addEventListener('click', function () {
+      var current = root.getAttribute('data-theme');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var effectiveDark = current ? current === 'dark' : prefersDark;
+      var next = effectiveDark ? 'light' : 'dark';
+      localStorage.setItem('railchat-theme', next);
+      apply(next);
+    });
+  })();
+</script>
+
+</body>
+</html>
